@@ -49,10 +49,11 @@ class App(tk.Tk):
         self.resizable(True, True)
         self.minsize(900, 600)
 
-        self.input_path  = None
-        self.output_path = None
-        self._tk_src     = None
-        self._tk_dst     = None
+        self.input_path   = None
+        self.second_path  = None
+        self.output_path  = None
+        self._tk_src      = None
+        self._tk_dst      = None
 
         self._build_ui()
         self.update_idletasks()
@@ -89,7 +90,15 @@ class App(tk.Tk):
             bg=CARD, fg=ACCENT2, activebackground=ACCENT, activeforeground=TEXT,
             relief="flat", padx=14, pady=6, cursor="hand2",
             command=self._open_file)
-        self.btn_file.pack(side="left", padx=(0, 10))
+        self.btn_file.pack(side="left", padx=(0, 6))
+
+        # second image button
+        self.btn_file2 = tk.Button(
+            bottom, text="📂  Второе фото", font=FONT_UI,
+            bg=CARD, fg=TEXT_DIM, activebackground=ACCENT, activeforeground=TEXT,
+            relief="flat", padx=14, pady=6, cursor="hand2",
+            command=self._open_second)
+        self.btn_file2.pack(side="left", padx=(0, 10))
 
         # command entry
         self.entry = tk.Entry(
@@ -164,6 +173,18 @@ class App(tk.Tk):
         self.frame_dst.config(image="", text="—")
         self._log(f"✓ Открыто: {os.path.basename(path)}", SUCCESS)
 
+    def _open_second(self):
+        path = filedialog.askopenfilename(
+            title="Выберите второе изображение",
+            filetypes=[("Изображения", "*.jpg *.jpeg *.png *.bmp *.tiff *.webp"),
+                       ("Все файлы", "*.*")])
+        if not path:
+            return
+        self.second_path = path
+        name = os.path.basename(path)
+        self.btn_file2.config(text=f"📂  {name}", fg=ACCENT2)
+        self._log(f"✓ Второе фото: {name}")
+
     def _run(self):
         if not self.input_path:
             messagebox.showwarning("Нет файла", "Сначала откройте изображение.")
@@ -193,12 +214,20 @@ class App(tk.Tk):
 
             processor = ImageProcessor(self.input_path)
 
+            TWO_IMAGE_FUNCS = {
+                "add_images", "blend_images", "subtract_images",
+                "bitwise_and", "bitwise_or", "bitwise_xor"
+            }
+
             results = []
             for cmd in commands:
                 func_name = cmd.get("function", "")
                 args = cmd.get("args", {})
                 if func_name == "blur_faces":
                     args.setdefault("cascade_path", "face.xml")
+                # подставляем второе изображение если выбрано
+                if func_name in TWO_IMAGE_FUNCS and self.second_path:
+                    args["second_image"] = self.second_path
                 if hasattr(processor, func_name):
                     try:
                         msg = getattr(processor, func_name)(**args)
