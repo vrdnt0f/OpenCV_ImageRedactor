@@ -2,20 +2,35 @@ import cv2
 import numpy as np
 import os
 
+def _imread(path: str):
+    """cv2.imread с поддержкой кириллицы и юникода в пути (Windows-совместимо)."""
+    with open(path, "rb") as f:
+        data = np.frombuffer(f.read(), dtype=np.uint8)
+    return cv2.imdecode(data, cv2.IMREAD_COLOR)
+
+def _imwrite(path: str, img):
+    """cv2.imwrite с поддержкой кириллицы и юникода в пути (Windows-совместимо)."""
+    ext = os.path.splitext(path)[1].lower()
+    ok, buf = cv2.imencode(ext, img)
+    if not ok:
+        raise IOError(f"Не удалось закодировать изображение в формат '{ext}'")
+    with open(path, "wb") as f:
+        f.write(buf.tobytes())
+
 class ImageProcessor:
     def __init__(self, image_path):
         self.image_path = image_path
-        self.img = cv2.imread(image_path)
+        self.img = _imread(image_path)
         if self.img is None:
             raise FileNotFoundError(f"Не удалось загрузить изображение: {image_path}")
 
     def save(self, output_path="result.jpg"):
-        cv2.imwrite(output_path, self.img)
+        _imwrite(output_path, self.img)
         return f"Файл сохранён как '{output_path}'"
 
     # ── Вспомогательный метод: загрузить второе изображение ──────────────────
     def _load_second(self, second_image: str):
-        img2 = cv2.imread(second_image)
+        img2 = _imread(second_image)
         if img2 is None:
             raise FileNotFoundError(f"Второе изображение не найдено: {second_image}")
         if img2.shape != self.img.shape:
